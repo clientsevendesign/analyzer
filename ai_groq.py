@@ -105,11 +105,13 @@ class GroqTradeValidator:
         try:
             content = body["choices"][0]["message"]["content"]
             parsed = json.loads(content)
+            risk_reward_raw = parsed.get("risk_reward_ok", True)
+            risk_reward_ok = risk_reward_raw if isinstance(risk_reward_raw, bool) else True
             return AIValidation(
                 confidence=max(0.0, min(100.0, float(parsed.get("confidence", base_confidence)))),
                 market_condition=str(parsed.get("market_condition", "ranging")).lower(),
                 sentiment=str(parsed.get("sentiment", "neutral")).lower(),
-                risk_reward_ok=bool(parsed.get("risk_reward_ok", True)),
+                risk_reward_ok=risk_reward_ok,
                 entry_note=str(parsed.get("entry_note", "")),
                 exit_note=str(parsed.get("exit_note", "")),
                 reasoning=str(parsed.get("reasoning", "Groq validation")),

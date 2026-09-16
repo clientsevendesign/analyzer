@@ -88,7 +88,7 @@ SYMBOL=GBPUSD
 1. Strategy generates breakout/retest signal.
 2. Local confidence + market condition are computed.
 3. Groq validates context and returns confidence + risk/reward check.
-4. Final confidence is blended and compared against `CONFIDENCE_THRESHOLD_PCT`.
+4. Final confidence uses Groq confidence when Groq returns successfully; otherwise local strategy confidence is used for fallback.
 5. Trade executes only if confidence threshold and risk checks pass.
 
 Default threshold: **65%**.

@@ -262,6 +262,8 @@ def set_ui_symbol():
     symbol = str(payload.get("symbol", "")).strip()
     if not symbol:
         return jsonify({"ok": False, "error": "symbol required"}), 400
+    if symbol not in state.get("available_symbols", []):
+        return jsonify({"ok": False, "error": "unsupported symbol"}), 400
     with state_lock:
         state["ui_selected_symbol"] = symbol
     return jsonify({"ok": True, "symbol": symbol})
