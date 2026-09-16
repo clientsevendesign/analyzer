@@ -136,7 +136,7 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
                         "close": round(float(df.iloc[-1]["close"]), 5),
                     },
                 )
-                final_confidence = round(validation.confidence if validation.source == "groq" else idea.confidence, 2)
+                final_confidence = round(validation.confidence, 2)
                 final_market_condition = validation.market_condition or idea.market_condition
                 final_sentiment = validation.sentiment or idea.sentiment
 

@@ -171,11 +171,17 @@ HTML = """
 
         const currentSymbol = data.ui_selected_symbol || data.current_symbol || 'US30Cash';
         const select = document.getElementById('symbol_selector');
-        if ([...select.options].every(o => o.value !== currentSymbol)) {
-          const option = document.createElement('option');
-          option.value = currentSymbol;
-          option.textContent = currentSymbol;
-          select.appendChild(option);
+        const supportedSymbols = Array.isArray(data.available_symbols) ? data.available_symbols : [];
+        if (supportedSymbols.length) {
+          const existing = new Set([...select.options].map((o) => o.value));
+          supportedSymbols.forEach((symbol) => {
+            if (!existing.has(symbol)) {
+              const option = document.createElement('option');
+              option.value = symbol;
+              option.textContent = symbol;
+              select.appendChild(option);
+            }
+          });
         }
         select.value = currentSymbol;
         updateSymbolHint(currentSymbol);

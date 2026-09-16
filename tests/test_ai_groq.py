@@ -16,6 +16,9 @@ class GroqValidatorTests(unittest.TestCase):
         self.assertEqual(result.source, "fallback")
         self.assertEqual(result.confidence, 72.5)
         self.assertIn(result.market_condition, {"trending", "ranging", "volatile"})
+        usage = validator.usage_stats()
+        self.assertEqual(usage["calls"], 1)
+        self.assertEqual(usage["errors"], 0)
 
 
 if __name__ == "__main__":
