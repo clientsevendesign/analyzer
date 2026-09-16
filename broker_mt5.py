@@ -63,6 +63,17 @@ class MT5Broker:
             raise RuntimeError("Could not fetch account info")
         return float(info.balance)
 
+    def get_account_info(self) -> dict:
+        info = mt5.account_info()
+        if info is None:
+            raise RuntimeError("Could not fetch account info")
+        return {
+            "balance": float(info.balance),
+            "equity": float(info.equity),
+            "margin": float(info.margin),
+            "free_margin": float(info.margin_free),
+        }
+
     def get_symbol_meta(self) -> SymbolMeta:
         info = mt5.symbol_info(self.symbol)
         if info is None:

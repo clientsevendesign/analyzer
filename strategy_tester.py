@@ -38,11 +38,13 @@ def build_synthetic_candles(bars: int = 500, seed: int = 7) -> pd.DataFrame:
 
 def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
     df = build_synthetic_candles(bars=bars, seed=seed)
+    df = df.rename(columns={"tick_volume": "volume"})
     df = enrich(df, cfg)
     point = 0.1
 
     risk = RiskManager(cfg, tz=timezone.utc)
     trades: List[Dict] = []
+    confidences: List[float] = []
     balance = cfg.starting_balance_zar
     entry_price = None
     entry_side = None
@@ -54,6 +56,8 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
         window = df.iloc[: idx + 1].copy()
         idea = generate_trade_idea(window, cfg, point=point)
         if idea.side == "none":
+            continue
+        if idea.confidence < cfg.confidence_threshold_pct:
             continue
 
         if entry_price is not None:
@@ -75,6 +79,7 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
         entry_sl = entry_price - ((idea.stop_points or 0) * point)
         entry_tp = entry_price + ((idea.take_points or 0) * point)
         entry_lot = lot
+        confidences.append(idea.confidence)
 
         if entry_side == "sell":
             entry_sl = entry_price + ((idea.stop_points or 0) * point)
@@ -94,11 +99,21 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
     if trades:
         win_rate = sum(1 for trade in trades if trade["pnl"] > 0) / len(trades)
 
+    sharpe_ratio = 0.0
+    if len(trades) > 1:
+        pnls = [trade["pnl"] for trade in trades]
+        avg = sum(pnls) / len(pnls)
+        variance = sum((value - avg) ** 2 for value in pnls) / (len(pnls) - 1)
+        std = variance ** 0.5
+        sharpe_ratio = (avg / std) if std > 0 else 0.0
+
     return {
         "trades": len(trades),
         "win_rate": round(win_rate, 3),
         "net_pnl": round(balance - cfg.starting_balance_zar, 2),
         "final_balance": round(balance, 2),
+        "avg_confidence": round(sum(confidences) / len(confidences), 2) if confidences else 0.0,
+        "sharpe_ratio": round(sharpe_ratio, 3),
         "sample_trade": trades[0] if trades else None,
     }
 
