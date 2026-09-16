@@ -225,7 +225,7 @@ class MT5Broker:
         # Detect abnormal spreads
         if self.metrics.avg_spread_points > 0:
             abnormal = spread_points > (self.metrics.avg_spread_points * ABNORMAL_SPREAD_MULTIPLIER)
-            if abnormal and self.metrics.abnormal_spread_detected == False:
+            if abnormal and not self.metrics.abnormal_spread_detected:
                 logger.warning(f"Abnormal spread detected: {spread_points:.1f} vs avg {self.metrics.avg_spread_points:.1f}")
             self.metrics.abnormal_spread_detected = abnormal
 

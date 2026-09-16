@@ -33,14 +33,14 @@ class GroqTradeValidator:
             "total_tokens": 0,
         }
 
-    def _fallback(self, base_confidence: float, reason: str) -> AIValidation:
+    def _fallback(self, base_confidence: float, reason: str, side: str) -> AIValidation:
         market_condition = "ranging"
         if base_confidence >= 75:
             market_condition = "trending"
         elif base_confidence < 55:
             market_condition = "volatile"
 
-        sentiment = "bullish" if "buy" in reason.lower() else "bearish" if "sell" in reason.lower() else "neutral"
+        sentiment = "bullish" if side == "buy" else "bearish" if side == "sell" else "neutral"
         return AIValidation(
             confidence=max(0.0, min(100.0, round(base_confidence, 2))),
             market_condition=market_condition,
@@ -55,7 +55,7 @@ class GroqTradeValidator:
     def analyze(self, symbol: str, side: str, base_confidence: float, rr_ratio: float, context: Dict[str, Any]) -> AIValidation:
         self.usage["calls"] += 1
         if not self.api_key:
-            return self._fallback(base_confidence=base_confidence, reason="Missing GROQ_API_KEY")
+            return self._fallback(base_confidence=base_confidence, reason="Missing GROQ_API_KEY", side=side)
 
         prompt = (
             "You are validating a forex/index scalping trade signal. "
@@ -91,18 +91,18 @@ class GroqTradeValidator:
 
         try:
             with request.urlopen(req, timeout=self.timeout_seconds) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-        except (error.HTTPError, error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
+                body_text = resp.read().decode("utf-8")
+        except (error.HTTPError, error.URLError, TimeoutError, ValueError) as exc:
             self.usage["errors"] += 1
             self.logger.warning("Groq validation failed, using fallback: %s", exc)
-            return self._fallback(base_confidence=base_confidence, reason=f"Groq error: {exc}")
-
-        usage = body.get("usage", {})
-        self.usage["prompt_tokens"] += int(usage.get("prompt_tokens", 0) or 0)
-        self.usage["completion_tokens"] += int(usage.get("completion_tokens", 0) or 0)
-        self.usage["total_tokens"] += int(usage.get("total_tokens", 0) or 0)
+            return self._fallback(base_confidence=base_confidence, reason=f"Groq error: {exc}", side=side)
 
         try:
+            body = json.loads(body_text)
+            usage = body.get("usage", {})
+            self.usage["prompt_tokens"] += int(usage.get("prompt_tokens", 0) or 0)
+            self.usage["completion_tokens"] += int(usage.get("completion_tokens", 0) or 0)
+            self.usage["total_tokens"] += int(usage.get("total_tokens", 0) or 0)
             content = body["choices"][0]["message"]["content"]
             parsed = json.loads(content)
             risk_reward_raw = parsed.get("risk_reward_ok", True)
@@ -126,7 +126,7 @@ class GroqTradeValidator:
         except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             self.usage["errors"] += 1
             self.logger.warning("Groq response parse failed, using fallback: %s", exc)
-            return self._fallback(base_confidence=base_confidence, reason=f"Groq parse error: {exc}")
+            return self._fallback(base_confidence=base_confidence, reason=f"Groq parse error: {exc}", side=side)
 
     def usage_stats(self) -> Dict[str, int]:
         return dict(self.usage)

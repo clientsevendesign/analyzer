@@ -228,11 +228,21 @@ HTML = """
 
       document.getElementById('symbol_selector').addEventListener('change', (event) => {
         const selected = event.target.value;
-        updateSymbolHint(selected);
         fetch('/api/ui_symbol', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({symbol: selected}),
+        }).then(async (response) => {
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            document.getElementById('last_error').textContent = body.error || 'Failed to set UI symbol';
+            refresh();
+            return;
+          }
+          updateSymbolHint(selected);
+        }).catch(() => {
+          document.getElementById('last_error').textContent = 'Failed to set UI symbol';
+          refresh();
         });
       });
 

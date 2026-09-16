@@ -75,7 +75,8 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
                 entry_sl = None
                 entry_tp = None
                 entry_lot = None
-            continue
+            else:
+                continue
 
         window = df.iloc[: idx + 1].copy()
         idea = generate_trade_idea(window, cfg, point=point)
