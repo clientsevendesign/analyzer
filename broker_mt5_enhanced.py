@@ -344,9 +344,12 @@ class MT5Broker:
 
     def close_position(self, position_ticket: int, volume: float, deviation: int) -> dict:
         """Close position with validation."""
-        pos = self.get_open_position()
-        if pos is None:
+        positions = self.get_all_open_positions()
+        if not positions:
             raise RuntimeError("No open position to close")
+        pos = next((item for item in positions if int(item.ticket) == int(position_ticket)), None)
+        if pos is None:
+            raise RuntimeError(f"Position ticket {position_ticket} not found")
 
         tick = self.get_tick()
         meta = self.get_symbol_meta()

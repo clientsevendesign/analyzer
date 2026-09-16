@@ -53,14 +53,14 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
     entry_lot = None
 
     for idx in range(50, len(df)):
+        if entry_price is not None:
+            continue
+
         window = df.iloc[: idx + 1].copy()
         idea = generate_trade_idea(window, cfg, point=point)
         if idea.side == "none":
             continue
         if idea.confidence < cfg.confidence_threshold_pct:
-            continue
-
-        if entry_price is not None:
             continue
 
         lot = risk.calc_lot_size(

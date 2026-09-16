@@ -1,7 +1,8 @@
 import unittest
+from typing import cast
 
 from config import load_config
-from strategy import enrich, generate_trade_idea
+from strategy import TradeIdea, enrich, generate_trade_idea
 from strategy_tester import build_synthetic_candles
 
 
@@ -33,7 +34,7 @@ class StrategyConfidenceTests(unittest.TestCase):
                 break
 
         self.assertIsNotNone(executable, "Expected at least one executable setup in synthetic data")
-        assert executable is not None
+        executable = cast(TradeIdea, executable)
         self.assertGreater(executable.confidence, 0.0)
         self.assertIn(executable.sentiment, {"bullish", "bearish"})
         self.assertIn(executable.market_condition, {"trending", "ranging", "volatile"})
