@@ -48,25 +48,6 @@ def _validate_environment(cfg: BotConfig) -> None:
 
 
 
-def _calc_trade_stats(trades: list[dict]) -> tuple[float, float]:
-    if not trades:
-        return 0.0, 0.0
-
-    wins = [1 for trade in trades if float(trade.get("pnl", 0.0)) > 0]
-    win_rate = round((sum(wins) / len(trades)) * 100.0, 2)
-
-    returns = [float(trade.get("pnl", 0.0)) for trade in trades]
-    if len(returns) < 2:
-        return win_rate, 0.0
-
-    avg = sum(returns) / len(returns)
-    variance = sum((x - avg) ** 2 for x in returns) / (len(returns) - 1)
-    std = variance ** 0.5
-    sharpe = round((avg / std), 3) if std > 0 else 0.0
-    return win_rate, sharpe
-
-
-
 def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
     paper_mode = cfg.paper_mode if paper_override is None else paper_override
     broker = MT5Broker(cfg.symbol)
@@ -97,7 +78,6 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
     )
 
     broker.connect()
-    local_trades: list[dict] = []
     try:
         while True:
             try:
@@ -223,7 +203,6 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
                         last_order=f"PAPER {idea.side.upper()} lot={lot}",
                         decision_reason=decision_reason,
                     )
-                    local_trades.append({"side": idea.side, "pnl": 0.0})
                     risk.mark_trade()
                 else:
                     result = broker.place_market_order(
@@ -241,9 +220,6 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
                         decision_reason=decision_reason,
                     )
                     risk.mark_trade()
-
-                win_rate, sharpe_ratio = _calc_trade_stats(local_trades)
-                update_state(win_rate=win_rate, sharpe_ratio=sharpe_ratio)
 
             except Exception as exc:
                 logger.exception("Loop error: %s", exc)

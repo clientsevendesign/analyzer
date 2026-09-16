@@ -136,7 +136,7 @@ HTML = """
         </div>
       </div>
 
-      <div class='sub' style='margin-top:16px;'>Switch symbols quickly with CLI: <code>python bot.py --paper --symbol GBPUSD</code></div>
+      <div class='sub' style='margin-top:16px;'>Switch symbols quickly with CLI: <code id='switch_hint'>python bot.py --paper --symbol US30Cash</code></div>
     </div>
 
     <script>
@@ -177,6 +177,7 @@ HTML = """
           select.appendChild(option);
         }
         select.value = currentSymbol;
+        updateSymbolHint(currentSymbol);
 
         const conf = Math.max(0, Math.min(100, Number(data.confidence || 0)));
         const bar = document.getElementById('confidence_bar');
@@ -219,6 +220,15 @@ HTML = """
           return `<div class='trade-row ${cls}'>${side} | ${time} | PnL ${pnl.toFixed(2)}</div>`;
         }).join('');
       }
+
+      function updateSymbolHint(symbol) {
+        document.getElementById('switch_hint').textContent = `python bot.py --paper --symbol ${symbol}`;
+      }
+
+      document.getElementById('symbol_selector').addEventListener('change', (event) => {
+        const selected = event.target.value;
+        updateSymbolHint(selected);
+      });
 
       setInterval(refresh, 5000);
       refresh();

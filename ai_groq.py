@@ -88,6 +88,7 @@ class GroqTradeValidator:
             },
         )
 
+        self.usage["calls"] += 1
         try:
             with request.urlopen(req, timeout=self.timeout_seconds) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
@@ -96,7 +97,6 @@ class GroqTradeValidator:
             self.logger.warning("Groq validation failed, using fallback: %s", exc)
             return self._fallback(base_confidence=base_confidence, reason=f"Groq error: {exc}")
 
-        self.usage["calls"] += 1
         usage = body.get("usage", {})
         self.usage["prompt_tokens"] += int(usage.get("prompt_tokens", 0) or 0)
         self.usage["completion_tokens"] += int(usage.get("completion_tokens", 0) or 0)
