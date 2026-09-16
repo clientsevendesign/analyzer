@@ -19,6 +19,25 @@ class StrategyConfidenceTests(unittest.TestCase):
         self.assertGreaterEqual(idea.exit_confidence, 0.0)
         self.assertLessEqual(idea.exit_confidence, 100.0)
 
+    def test_executable_signal_has_metadata(self):
+        cfg = load_config()
+        df = build_synthetic_candles(bars=260, seed=29)
+        df = df.rename(columns={"tick_volume": "volume"})
+        enriched = enrich(df, cfg)
+
+        executable = None
+        for idx in range(60, len(enriched)):
+            idea = generate_trade_idea(enriched.iloc[: idx + 1], cfg, point=0.1)
+            if idea.side in {"buy", "sell"}:
+                executable = idea
+                break
+
+        self.assertIsNotNone(executable, "Expected at least one executable setup in synthetic data")
+        assert executable is not None
+        self.assertGreater(executable.confidence, 0.0)
+        self.assertIn(executable.sentiment, {"bullish", "bearish"})
+        self.assertIn(executable.market_condition, {"trending", "ranging", "volatile"})
+
 
 if __name__ == "__main__":
     unittest.main()

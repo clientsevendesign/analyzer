@@ -62,6 +62,7 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
         status="starting",
         last_signal="initializing",
         current_symbol=cfg.symbol,
+        ui_selected_symbol=cfg.symbol,
         available_symbols=sorted(SYMBOL_PROFILES.keys()),
         confidence_threshold=cfg.confidence_threshold_pct,
     )
@@ -135,7 +136,7 @@ def run_loop(cfg: BotConfig, paper_override: bool | None = None) -> None:
                         "close": round(float(df.iloc[-1]["close"]), 5),
                     },
                 )
-                final_confidence = round((idea.confidence * 0.4) + (validation.confidence * 0.6), 2)
+                final_confidence = round(validation.confidence if validation.source == "groq" else idea.confidence, 2)
                 final_market_condition = validation.market_condition or idea.market_condition
                 final_sentiment = validation.sentiment or idea.sentiment
 

@@ -28,6 +28,7 @@ state: Dict[str, Any] = {
     "groq_usage": {"calls": 0, "errors": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
     "equity_curve": [],
     "trade_log": [],
+    "ui_selected_symbol": "US30Cash",
 }
 
 HTML = """
@@ -82,7 +83,7 @@ HTML = """
         </div>
         <div class='selector'>
           <span class='badge' id='status'>idle</span>
-          <label for='symbol_selector'>Symbol</label>
+          <label for='symbol_selector'>Launch Symbol</label>
           <select id='symbol_selector'>
             <option>US30Cash</option>
             <option>GBPUSD</option>
@@ -136,7 +137,7 @@ HTML = """
         </div>
       </div>
 
-      <div class='sub' style='margin-top:16px;'>Switch symbols quickly with CLI: <code id='switch_hint'>python bot.py --paper --symbol US30Cash</code></div>
+      <div class='sub' style='margin-top:16px;'>UI selector updates launch command only (does not change a running bot). Run: <code id='switch_hint'>python bot.py --paper --symbol US30Cash</code></div>
     </div>
 
     <script>
@@ -168,7 +169,7 @@ HTML = """
         document.getElementById('decision_reason').textContent = data.decision_reason || 'None';
         document.getElementById('last_error').textContent = data.last_error || 'None';
 
-        const currentSymbol = data.current_symbol || 'US30Cash';
+        const currentSymbol = data.ui_selected_symbol || data.current_symbol || 'US30Cash';
         const select = document.getElementById('symbol_selector');
         if ([...select.options].every(o => o.value !== currentSymbol)) {
           const option = document.createElement('option');
@@ -228,6 +229,11 @@ HTML = """
       document.getElementById('symbol_selector').addEventListener('change', (event) => {
         const selected = event.target.value;
         updateSymbolHint(selected);
+        fetch('/api/ui_symbol', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({symbol: selected}),
+        });
       });
 
       setInterval(refresh, 5000);
@@ -246,6 +252,19 @@ def index():
 @app.get("/api/status")
 def status():
     return jsonify(state)
+
+
+@app.post("/api/ui_symbol")
+def set_ui_symbol():
+    from flask import request
+
+    payload = request.get_json(silent=True) or {}
+    symbol = str(payload.get("symbol", "")).strip()
+    if not symbol:
+        return jsonify({"ok": False, "error": "symbol required"}), 400
+    with state_lock:
+        state["ui_selected_symbol"] = symbol
+    return jsonify({"ok": True, "symbol": symbol})
 
 
 @app.post("/api/backtest")
