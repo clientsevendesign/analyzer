@@ -53,7 +53,28 @@ def run_backtest(cfg: BotConfig, bars: int = 500, seed: int = 7) -> Dict:
     entry_lot = None
 
     for idx in range(50, len(df)):
+        current_price = float(df.iloc[idx]["close"])
         if entry_price is not None:
+            hit_stop = (
+                (entry_side == "buy" and current_price <= entry_sl)
+                or (entry_side == "sell" and current_price >= entry_sl)
+            )
+            hit_take = (
+                (entry_side == "buy" and current_price >= entry_tp)
+                or (entry_side == "sell" and current_price <= entry_tp)
+            )
+            if hit_stop or hit_take:
+                if entry_side == "buy":
+                    pnl = (current_price - entry_price) * entry_lot * 1000.0
+                else:
+                    pnl = (entry_price - current_price) * entry_lot * 1000.0
+                balance += pnl
+                trades.append({"entry": entry_price, "exit": current_price, "pnl": pnl, "side": entry_side})
+                entry_price = None
+                entry_side = None
+                entry_sl = None
+                entry_tp = None
+                entry_lot = None
             continue
 
         window = df.iloc[: idx + 1].copy()

@@ -53,6 +53,7 @@ class GroqTradeValidator:
         )
 
     def analyze(self, symbol: str, side: str, base_confidence: float, rr_ratio: float, context: Dict[str, Any]) -> AIValidation:
+        self.usage["calls"] += 1
         if not self.api_key:
             return self._fallback(base_confidence=base_confidence, reason="Missing GROQ_API_KEY")
 
@@ -88,7 +89,6 @@ class GroqTradeValidator:
             },
         )
 
-        self.usage["calls"] += 1
         try:
             with request.urlopen(req, timeout=self.timeout_seconds) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
