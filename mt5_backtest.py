@@ -165,14 +165,13 @@ def run_mt5_backtest(cfg: BotConfig, timeframe: str = "M1", bars: int = 3000) ->
                 "trade_count": trade_count,
             })
 
-        metrics = {
-            "trades": len(trades),
-            "win_rate": round(sum(1 for trade in trades if trade["pnl"] > 0) / len(trades), 3) if trades else 0.0,
-            "net_pnl": round(balance - cfg.starting_balance_zar, 2),
-            "final_balance": round(balance, 2),
-            "max_drawdown_pct": round((max_balance - min([row["balance"] for row in equity_curve] if equity_curve else [balance])) / max_balance * 100.0 if max_balance else 0.0, 2),
-            "trade_log": trades,
-        }
+        sharpe_ratio = 0.0
+        if len(trades) > 1:
+            pnls = [trade["pnl"] for trade in trades]
+            avg = sum(pnls) / len(pnls)
+            variance = sum((value - avg) ** 2 for value in pnls) / (len(pnls) - 1)
+            std = variance ** 0.5
+            sharpe_ratio = (avg / std) if std > 0 else 0.0
 
         metrics = {
             "trades": len(trades),
@@ -180,6 +179,7 @@ def run_mt5_backtest(cfg: BotConfig, timeframe: str = "M1", bars: int = 3000) ->
             "net_pnl": round(balance - cfg.starting_balance_zar, 2),
             "final_balance": round(balance, 2),
             "max_drawdown_pct": round((max_balance - min([row["balance"] for row in equity_curve] if equity_curve else [balance])) / max_balance * 100.0 if max_balance else 0.0, 2),
+            "sharpe_ratio": round(sharpe_ratio, 3),
             "trade_log": trades,
         }
         return MT5BacktestResult(trades=trades, equity_curve=equity_curve, metrics=metrics)

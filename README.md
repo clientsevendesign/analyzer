@@ -1,98 +1,167 @@
-# US30 Scalper Bot (Python + MT5)
+# Analyzer Trading Bot (US30Cash + GBPUSD)
 
-Automated US30 scalping bot focused on small-account protection and strict
-time-window trading in SAST.
+Groq-enhanced MT5 trading bot with confidence-based execution, symbol profiles, and a professional live dashboard.
 
-## What this bot does
+## Quick start (3 steps)
 
-- Trades only during configured SAST session times (default `09:00` to `22:00`).
-- Uses a simple, testable scalping strategy:
-  - Trend filter: fast EMA vs slow EMA on M1 candles.
-  - Entry trigger: pullback to fast EMA with momentum confirmation.
-  - Volatility filter: minimum ATR threshold to avoid dead markets.
-- Enforces deterministic risk controls before opening any trade:
-  - Fixed risk per trade (default `0.5%` of balance).
-  - Max daily drawdown stop (default `3%`).
-  - Max trades per day (default `6`).
-  - Cooldown between entries (default `5` minutes).
-  - One open position at a time (default enabled).
-- Places SL/TP at entry and manages exits automatically.
-
-## Account profile
-
-Designed for a small account (`ZAR 1000` baseline), with the bot skipping trades
-when lot-size constraints would violate risk rules.
-
-## Setup
-
-1. Install dependencies:
+1. **Install dependencies**
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-If `MetaTrader5` fails to install, your Python version is likely too new for
-available MT5 wheels. Use Python 3.11 or 3.12 in a dedicated venv for this bot.
+2. **Create `.env` and configure required values**
 
-2. Ensure MetaTrader 5 terminal is open and logged in to an account that has
-   `US30Cash` (or your configured symbol) in Market Watch.
+```env
+GROQ_API_KEY=your_groq_api_key
+SYMBOL=US30Cash
+PAPER_MODE=true
 
-3. Copy `.env.example` to `.env` and adjust values.
+# Optional MT5 credentials (required for unattended live login)
+MT5_LOGIN=
+MT5_PASSWORD=
+MT5_SERVER=
+MT5_TERMINAL_PATH=
+```
 
-## Quick test (paper mode)
+3. **Run the bot**
 
 ```powershell
 python bot.py --paper
 ```
 
-## Strategy tester / backtest
+Dashboard: `http://127.0.0.1:8081`
+
+---
+
+## Groq AI setup
+
+- Create a Groq key at: https://console.groq.com/keys
+- Set `GROQ_API_KEY` in `.env`
+- Optional tuning:
+  - `GROQ_MODEL` (default: `llama-3.1-8b-instant`)
+  - `GROQ_TIMEOUT_SECONDS` (default: `10`)
+  - `CONFIDENCE_THRESHOLD_PCT` (default: `65`)
+
+### What Groq validation adds
+
+- Real-time confidence score (0-100)
+- Market condition classification (`trending` / `ranging` / `volatile`)
+- Sentiment from price-action context (`bullish` / `bearish` / `neutral`)
+- Risk/reward validation gate before trade execution
+- Entry/exit reasoning text
+- Token usage tracking (calls/errors/prompt/completion/total tokens)
+
+If `GROQ_API_KEY` is missing or Groq returns an error, the bot falls back to deterministic local confidence logic and logs the reason.
+
+---
+
+## Symbol configuration guide
+
+The bot has symbol-specific defaults:
+
+- **US30Cash**
+  - EMA: `5/15`
+  - ATR period: `14`
+  - Min volatility: `15` points
+- **GBPUSD**
+  - EMA: `9/21`
+  - ATR period: `20`
+  - Min volatility: `12` pips-equivalent points
+
+Switch symbol quickly:
+
+```powershell
+python bot.py --paper --symbol GBPUSD
+```
+
+Or set in `.env`:
+
+```env
+SYMBOL=GBPUSD
+```
+
+---
+
+## Strategy and confidence flow
+
+1. Strategy generates breakout/retest signal.
+2. Local confidence + market condition are computed.
+3. Groq validates context and returns confidence + risk/reward check.
+4. Final confidence uses Groq confidence when Groq returns successfully; otherwise local strategy confidence is used for fallback.
+5. Trade executes only if confidence threshold and risk checks pass.
+
+Default threshold: **65%**.
+
+---
+
+## Dashboard highlights
+
+- Professional grey + sky-blue theme (`#2a3f5f`, `#4a5f7f`, `#87ceeb`, `#b0e0e6`)
+- AI confidence gauge + threshold display
+- Market condition + sentiment + exit confidence
+- Groq usage statistics
+- Win rate + Sharpe ratio
+- Equity curve and recent trades
+
+---
+
+## One-click Windows launcher
+
+Use the included batch file:
+
+```bat
+launch_bot.bat
+```
+
+It validates Python, checks `.env`, defaults to `US30Cash`, and launches the bot in paper mode.
+
+Optional overrides before launching:
+
+```bat
+set SYMBOL=GBPUSD
+set BOT_MODE=--live
+launch_bot.bat
+```
+
+---
+
+## Configuration templates (account size)
+
+Set `ACCOUNT_SIZE_TEMPLATE` in `.env`:
+
+- `small` (default): balance `1000`, risk `0.5%`
+- `medium`: balance `10000`, risk `0.35%`
+- `large`: balance `50000`, risk `0.25%`
+
+Manual env values still override template defaults.
+
+---
+
+## Troubleshooting
+
+### Bot starts but no trades
+- Confirm session window settings (`SESSION_START_SAST`, `SESSION_END_SAST`)
+- Check volatility threshold (`MIN_ATR_POINTS`)
+- Check confidence threshold (`CONFIDENCE_THRESHOLD_PCT`)
+
+### Groq usage not increasing
+- Verify `GROQ_API_KEY` is set correctly
+- Check network access and timeout (`GROQ_TIMEOUT_SECONDS`)
+- Inspect logs for fallback messages
+
+### MT5 connection errors
+- Open MT5 terminal and ensure symbol is visible in Market Watch
+- Verify login/server/path env values
+- Use Python 3.11/3.12 if MT5 wheel install fails
+
+---
+
+## Backtest / strategy tester
 
 ```powershell
 python run_strategy_tester.py
+python run_mt5_backtest.py
 ```
 
-This runs the logic against synthetic historical bars so you can see a basic
-backtest summary including trade count, win rate, and net PnL before you go live.
-
-## Live mode
-
-```powershell
-python bot.py
-```
-
-## Strategy summary
-
-- Timeframe: M1
-- Long setup:
-  - `EMA_FAST > EMA_SLOW`
-  - Pullback near `EMA_FAST`
-  - Latest close returns above `EMA_FAST`
-  - ATR above threshold
-- Short setup mirrors long setup.
-- Stop Loss: `atr * stop_atr_mult`
-- Take Profit: `SL distance * rr_ratio`
-
-## Python vs native MT5 EA
-
-You can integrate in two ways:
-
-- Python execution (this project):
-  - Fast to iterate and backtest logic.
-  - Good for decision-heavy logic and integrations.
-  - Slightly higher latency and dependency on terminal/Python runtime.
-- Native MQL5 EA (compiled in MT5):
-  - Lower latency, tighter platform integration.
-  - Better for high-frequency execution reliability.
-  - Slower iteration for complex strategy logic.
-
-Recommended path now: validate strategy and risk behavior in Python first, then
-port stable entry/exit logic to MQL5 if you need lower latency.
-
-## Compile directly on MT5?
-
-- Python cannot be "compiled into" MT5 directly.
-- For direct MT5-native execution, you need an `.mq5` Expert Advisor compiled in
-  MetaEditor.
-- Practical hybrid workflow:
-  - Build and validate strategy in Python (fast iteration + easy logging).
-  - Port stable final logic to MQL5 for production execution speed.
+Backtest metrics include trades, win rate, net PnL, and Sharpe ratio.
